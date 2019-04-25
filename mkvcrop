@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+import sys
+import os
+import shutil
+import csv
+import subprocess
+from datetime import datetime, timedelta
+import logging
+logging.basicConfig()
+logger = logging.getLogger()
+#logger.setLevel(logging.DEBUG)
+
+# cd to directory if passed as argument
+if len(sys.argv) > 1:
+    os.chdir(sys.argv[1])
+
+def process_item(config):
+    if len(config) < 3 or not config[1]:
+        return
+
+    filename = config[0]
+
+    if not os.path.isfile(filename):
+        logger.debug("skipping non-existent %s", filename)
+        return
+
+    logger.debug("processing %s", filename)
+    # get total duration of file in seconds
+    durationstr=subprocess.check_output(['mediainfo', '--Output=General;%Duration%', filename], stderr=subprocess.STDOUT).strip()
+    if not durationstr:
+        logger.error("no medatadata found in %s", filename)
+        return
+
+    fileduration = timedelta(milliseconds=int(durationstr))
+    logger.debug("input file duration: %s", fileduration)
+
+    # get requested duration
+    try:
+        starttime = datetime.strptime(config[1], '%H:%M:%S')
+    except ValueError:
+        try:
+            starttime = datetime.strptime(config[1], '%M:%S')
+        except ValueError:
+            logger.debug("skipping invalid date %s", config[1])
+            return
+    logger.debug("requested start time: %s", starttime)
+    try:
+        endtime = datetime.strptime(config[2], '%H:%M:%S')
+    except ValueError:
+        try:
+            endtime = datetime.strptime(config[2], '%M:%S')
+        except ValueError:
+            logger.debug("skipping invalid date %s", config[1])
+            return
+    logger.debug("requested end time: %s", endtime)
+    reqduration = endtime - starttime
+    logger.debug("requested duration: %s", reqduration)
+
+    if fileduration - reqduration < timedelta(seconds=30):
+        logger.debug("file already cropped")
+        return
+
+    logger.info("cropping %s", filename)
+    oldfile = filename+"~"
+    # os.rename has problems with utf8 filenames
+#    os.rename(filename, oldfile)
+    shutil.move(filename, oldfile)
+    try:
+        subprocess.check_call(['nice', '-n', '20', 'ionice', '-c', '3', 'mkvmerge', '-o', filename, '--split', 'parts:%s-%s' % tuple(config[1:3]), oldfile], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError, e:
+        logger.error("processing %s failed (%s)", filename, e)
+        os.rename(oldfile, filename)
+        return
+    # copy mtime/atime from original file
+    info = os.stat(oldfile)
+    # this works but causes ownership problems when the files are on samba share
+    # os.utime(filename, (info.st_atime, info.st_mtime))
+    subprocess.check_call(['sudo', 'touch', '-d', str(datetime.fromtimestamp(info.st_mtime)), filename])
+
+
+with open('.mkvcrop.csv', 'rb') as f:
+    for item in reversed(list(csv.reader(f, delimiter=';'))):
+        process_item(item)
