@@ -18,13 +18,22 @@ def process_item(config):
     if len(config) < 3 or not config[1]:
         return
 
+    rerun = False
     filename = config[0]
+    orgfile = filename
 
     if not os.path.isfile(filename):
         logger.debug("skipping non-existent %s", filename)
         return
 
-    logger.debug("processing %s", filename)
+    oldfile = filename+"~"
+    if os.path.isfile(oldfile):
+        rerun = True
+        filename = oldfile
+        logger.debug("re-processing %s", filename)
+    else:
+        logger.debug("processing %s", filename)
+
     # get total duration of file in seconds
     durationstr=subprocess.check_output(['mediainfo', '--Output=General;%Duration%', filename], stderr=subprocess.STDOUT).strip()
     if not durationstr:
@@ -61,10 +70,11 @@ def process_item(config):
         return
 
     logger.info("cropping %s", filename)
-    oldfile = filename+"~"
     # os.rename has problems with utf8 filenames
 #    os.rename(filename, oldfile)
-    shutil.move(filename, oldfile)
+    if not rerun:
+        shutil.move(filename, oldfile)
+    filename = orgfile
     try:
         subprocess.check_call(['nice', '-n', '20', 'ionice', '-c', '3', 'mkvmerge', '-o', filename, '--split', 'parts:%s-%s' % tuple(config[1:3]), oldfile], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError, e:
