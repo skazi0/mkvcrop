@@ -1,0 +1,4 @@
+#!/bin/sh
+ts=$(date -d @$(stat -c %Y "$1") +%Y%m%d%H%M.%S)
+mkvpropedit "$1" --edit track:v1 --set display-width=4 --set display-height=3 --set display-unit=3
+sudo touch -t $ts "$1"
