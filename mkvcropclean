@@ -1,0 +1,31 @@
+#!/bin/sh
+find_missing() {
+cat .mkvcrop.csv | while read line; do
+file=$(echo $line | cut -d';' -f1)
+test -e "$file" || echo "$file"
+done
+}
+missing=$(find_missing)
+if test -z "$missing"; then
+    echo no missing files found
+    exit
+fi
+echo missing files:
+echo "$missing"
+read -p "remove from index? [Yn]:" remove
+test -n "$remove" || remove=y
+case $remove in
+    y|Y)
+        echo removing...
+        cp .mkvcrop.csv .mkvcrop.csv.bak
+        echo "$missing" | while read filename; do
+            sed -i "/^$filename;/d" .mkvcrop.csv
+        done
+        ;;
+    n|N)
+        echo canceled
+        ;;
+    *)
+        echo unknown choice
+        ;;
+esac
