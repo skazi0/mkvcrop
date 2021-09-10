@@ -3,10 +3,14 @@ cp .mkvcrop.csv .mkvcrop.csv.bak
 cat .mkvcrop.csv.bak | while read line; do
     filename=$(echo "$line" | cut -d';' -f1)
     start=$(echo "$line" | cut -d';' -f2)
+    # skip if times known from index
+    test -n "$start" && continue
     end=$(echo "$line" | cut -d';' -f3)
     base=$(basename "$filename" .mkv)
-    test -z "$start" && start=$(cat "$base.start" 2> /dev/null | tr -d ' ')
-    test -z "$end" && end=$(cat "$base.end" 2> /dev/null | tr -d ' ')
+    start=$(cat "$base.start" 2> /dev/null | tr -d ' ')
+    end=$(cat "$base.end" 2> /dev/null | tr -d ' ')
+    # skip if nothing to persist
+    test -z "$start" && continue
 #    echo "[$file][$base][$start][$end]"
     sed -i "s/^$filename;;;/$filename;$start;$end;/" .mkvcrop.csv
     rm -f "$base.start" "$base.end"
