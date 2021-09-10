@@ -6,12 +6,15 @@ cat .mkvcrop.csv.bak | while read line; do
     # skip if times known from index
     test -n "$start" && continue
     end=$(echo "$line" | cut -d';' -f3)
-    base=$(basename "$filename" .mkv)
+    # don't use `basename` to keep directory
+    base=$(echo "$filename" | sed 's/\.mkv//')
     start=$(cat "$base.start" 2> /dev/null | tr -d ' ')
     end=$(cat "$base.end" 2> /dev/null | tr -d ' ')
     # skip if nothing to persist
     test -z "$start" && continue
 #    echo "[$file][$base][$start][$end]"
+    # escape slashes
+    filename=$(echo "$filename" | sed 's/\//\\\//')
     sed -i "s/^$filename;;;/$filename;$start;$end;/" .mkvcrop.csv
     rm -f "$base.start" "$base.end"
 done
