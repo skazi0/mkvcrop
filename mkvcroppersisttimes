@@ -18,3 +18,8 @@ cat .mkvcrop.csv.bak | while read line; do
     sed -i "s/^$filename;;;/$filename;$start;$end;/" .mkvcrop.csv
     rm -f "$base.start" "$base.end"
 done
+
+pre=$(wc -l .mkvcrop.csv.bak | cut -d' ' -f1)
+post=$(wc -l .mkvcrop.csv | cut -d' ' -f1)
+delta=$(( $pre - $post ))
+echo "Removed $delta items"
