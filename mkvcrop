@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys
 import os
 import shutil
@@ -89,7 +89,7 @@ def process_item(config):
     filename = orgfile
     try:
         subprocess.check_call(['nice', '-n', '20', 'ionice', '-c', '3', 'mkvmerge', '-o', filename, '--split', 'parts:%s-%s' % (startstr, endstr), oldfile], stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError, e:
+    except subprocess.CalledProcessError as e:
         logger.error("processing %s failed (%s)", filename, e)
         os.rename(oldfile, filename)
         return
@@ -100,6 +100,6 @@ def process_item(config):
     subprocess.check_call(['sudo', 'touch', '-d', str(datetime.fromtimestamp(info.st_mtime)), filename])
 
 
-with open('.mkvcrop.csv', 'rb') as f:
+with open('.mkvcrop.csv', 'r') as f:
     for item in reversed(list(csv.reader(f, delimiter=';'))):
         process_item(item)
